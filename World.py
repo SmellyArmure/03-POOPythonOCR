@@ -2,26 +2,23 @@ import json
 
 #Classe Agent
 class Agent:
-	def __init__(self, agreeableness):
-		self.agreeableness=agreeableness
+	def __init__(self, agAttributs):
+		for nomAtt, valAtt in agAttributs.items():
+			setattr(self, nomAtt, valAtt)
 
-listAgent = []
+listAgents = []
 listAgreeableness = []
 
 fichAgents = open("agents-100k.json")
-Data = json.load(fichAgents)
+data = json.load(fichAgents)
 
-for element in Data:
-	listAgent.append(Agent(element["agreeableness"]))
-	#listAgreeableness.append(element["agreeableness"])
-	listAgreeableness.append(listAgent[-1].agreeableness)
+for element in data:
+ 	listAgents.append(Agent(element))
+ 	listAgreeableness.append(listAgents[-1].agreeableness)
+
+monAgent = listAgents[2]
 
 fichAgents.close()
 
-somme = sum(listAgreeableness)
-total = len(listAgreeableness)
-moyenne = somme/total
+print(str(monAgent.agreeableness))
 
-print(somme)
-print(total)
-print(moyenne)
