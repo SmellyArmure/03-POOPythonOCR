@@ -1,9 +1,7 @@
 class Agent:
-	pass
+	def __init__(self, agreeableness):
+		self.agreeableness=agreeableness
 
-first_agent = Agent()
-#second_agent = Agent()
+first_agent = Agent(1.5)
 
-print(first_agent)
-print(type(first_agent))
-print(str(type(first_agent)))
+print("l'agréabilité de l'agent est : " + str(first_agent.agreeableness))
