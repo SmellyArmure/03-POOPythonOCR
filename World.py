@@ -34,26 +34,41 @@ class Zone:
 	WIDTH_DEG = 10
 	HEIGHT_DEG = 10
 
-	def __init__(self, coin1, coin2):
-		self.coin1 = coin1
-		self.coin2 = coin2
+	# constructeur des objets de classe Zone
+	def __init__(self, pt1, pt2):
+		self.coin1 = pt1
+		self.coin2 = pt2
+		self.inhabitants = [] # crée le tableau qui contiendra les habitants
 
+	# affecte à une zone l'agent passé en paramètre
+	def affectInhab(self, agent):
+		self.inhabitants.append(agent) #met l'agent dans une liste correpondant à la zone
+
+	# vérifie si la position donnée est bien dans l'objet de classe Zone concerné
+	def contains(self, posit):
+		return posit.longitude >= min(self.coin1.longitude, self.coin2.longitude) and \
+		posit.longitude <= max(self.coin1.longitude, self.coin2.longitude) and \
+		posit.latitude >= min(self.coin1.latitude, self.coin2.latitude) and \
+		posit.latitude <= max(self.coin1.latitude, self.coin2.latitude)
+
+	# initialise la liste de toutes les zones 
 	@classmethod
 	def init_zones(cls):
 		for lati in range(cls.MIN_LAT_DEG, cls.MAX_LAT_DEG, cls.HEIGHT_DEG):
 			for longi in range (cls.MIN_LONG_DEG, cls.MAX_LONG_DEG, cls.WIDTH_DEG):
 				cls.ZONES.append(Zone(Position(longi, lati), Position(longi+cls.WIDTH_DEG, lati+cls.HEIGHT_DEG)))
 
-##############################################################""
-#Fonction permettant d'assigner les habitants à leur zone
-def indexZoneInhab(agent):
-	#récupère la position de l'agent (degrés) et calcule le compteur de chaque boucle
-	index_long = int((agent.position.longitude - Zone.MIN_LONG_DEG) // Zone.WIDTH_DEG)
-	index_lat = int((agent.position.latitude - Zone.MIN_LAT_DEG) // Zone.HEIGHT_DEG)
-	#calcule l'index dans la liste Zone.ZONES[]
-	index = int((index_lat * ((Zone.MAX_LONG_DEG - Zone.MIN_LONG_DEG) // Zone.WIDTH_DEG)) + index_long)
-	return (index, (index_long, index_lat))
-
+	# assigne les habitants à leur zone (renvoie la zone concernée)
+	@classmethod
+	def ZoneInhab(cls,position):
+		#utilise la position de l'agent donnée (degrés) et calcule le compteur de chaque boucle
+		index_long = int((position.longitude - cls.MIN_LONG_DEG) // cls.WIDTH_DEG)
+		index_lat = int((position.latitude - cls.MIN_LAT_DEG) // cls.HEIGHT_DEG)
+		#calcule l'index dans la liste Zone.ZONES[]
+		index = int((index_lat * ((cls.MAX_LONG_DEG - cls.MIN_LONG_DEG) // cls.WIDTH_DEG)) + index_long)
+		theZone = cls.ZONES[index]
+		assert theZone.contains(position) # vérifie que la position est bien dans la zone trouvée
+		return theZone # renvoie la zone
 ##############################################################""
 #Initialisation des variables
 listAgents = []
@@ -61,14 +76,24 @@ listAgents = []
 #Fonction main
 def main():
 	Zone.init_zones() #initialise les zones (attribut de classe : liste ZONES)
+	#boucle sur les agents
+	ind = 0
 	for dico in json.load(open("agents-100k.json")): #boucle sur les éléments (dictionnaires) qui constitueront les agents
-		pos = Position(dico.pop("longitude"),dico.pop("latitude")) #récupère la position des agents
-		listAgents.append(Agent(pos,**dico)) #passe en attribut la position des agents, crée les attributs selon le dictionnaire
-	ind = int(input("indice d'un agent ?"))
-	ind_zone = indexZoneInhab(listAgents[int(ind)])[0]
-	print("les coord de l'agent n°" + str(ind) + " sont :\n (" + str(listAgents[ind].position.longitude) + "," + str(listAgents[ind].position.latitude) + ").")
-	print("la zone n°" + str(ind_zone) + " est définie par les points de coordonnées :\n(" + str(Zone.ZONES[ind_zone].coin1.longitude) + "," + str(Zone.ZONES[ind_zone].coin1.latitude) + ") et ("+ str(Zone.ZONES[ind_zone].coin2.longitude) + "," + str(Zone.ZONES[ind_zone].coin2.latitude) + ").")
-	print("(Remarque : les indices long et lat sont " + str(indexZoneInhab(listAgents[int(ind)])[1]) + ".)")
+		ind += 1
+		pos = Position(dico.pop("longitude"),dico.pop("latitude")) #récupère la position de l'agent
+		agent = Agent(pos,**dico) # crée l'agent selon sa position et les attributs du dictionnaire
+		listAgents.append(agent) # ajoute l'agent crée à la liste
+		zone = Zone.ZoneInhab(agent.position) 
+		zone.affectInhab(agent) # affecte l'agent dans sa zone
+	rep = int(input("numéro d'agent ? "))
+	print("l'agent n°" + str(rep) + " est situé à la position (" + str(listAgents[rep].position.longitude) \
+		+ "," + str(listAgents[rep].position.latitude) + ").")
+	repZone = Zone.ZoneInhab(listAgents[rep].position)
+	lat_c1 = repZone.coin1.latitude
+	lat_c2 = repZone.coin2.latitude
+	long_c1 = repZone.coin1.longitude
+	long_c2 = repZone.coin2.longitude
+	print("Il est contenu dans la zone délimitée par (" + str(long_c1) + "," + str(lat_c1) + ") et (" + str(long_c2) + "," + str(lat_c2) + ").")
 
 main()
 
