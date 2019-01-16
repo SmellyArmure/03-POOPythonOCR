@@ -46,7 +46,7 @@ class Zone:
 	
 	# initialise la liste de toutes les zones 
 	@classmethod
-	def init_zones(cls):
+	def _init_zones(cls):
 		for lati in range(cls.MIN_LAT_DEG, cls.MAX_LAT_DEG, cls.HEIGHT_DEG):
 			for longi in range (cls.MIN_LONG_DEG, cls.MAX_LONG_DEG, cls.WIDTH_DEG):
 				cls.ZONES.append(Zone(Position(longi, lati), Position(longi+cls.WIDTH_DEG, lati+cls.HEIGHT_DEG)))
@@ -54,6 +54,8 @@ class Zone:
 	# assigne les habitants à leur zone (renvoie la zone concernée)
 	@classmethod
 	def zoneInhab(cls,position):
+		if not cls.ZONES: # au cas où la liste des zones n'existerait pas encore (ZONES serait égal à [])
+			cls._init_zones() #initialise les zones (attribut de classe : liste ZONES)
 		#utilise la position de l'agent donnée (degrés) et calcule le compteur de chaque boucle
 		index_long = int((position.longitude - cls.MIN_LONG_DEG) // cls.WIDTH_DEG)
 		index_lat = int((position.latitude - cls.MIN_LAT_DEG) // cls.HEIGHT_DEG)
@@ -80,13 +82,12 @@ listAgents = []
 ##############################################################""
 #Fonction main
 def main():
-	Zone.init_zones() #initialise les zones (attribut de classe : liste ZONES)
 	#boucle sur les agents
 	for dico in json.load(open("agents-100k.json")): #boucle sur les éléments (dictionnaires) qui constitueront les agents
 		pos = Position(dico.pop("longitude"),dico.pop("latitude")) #récupère la position de l'agent
 		agent = Agent(pos,**dico) # crée l'agent selon sa position et les attributs du dictionnaire
 		listAgents.append(agent) # ajoute l'agent crée à la liste
-		zone = Zone.zoneInhab(agent.position) 
+		zone = Zone.zoneInhab(agent.position) # trouve la zone correspondant à la position de l'agent
 		zone.affectInhab(agent) # affecte l'agent dans sa zone
 	rep = int(input("numéro d'agent ? "))
 	print("l'agent n°" + str(rep) + " est situé à la position (" + str(listAgents[rep].position.longitude) \
