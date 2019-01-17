@@ -1,11 +1,25 @@
 import json
 import math
 import random
+import matplotlib.pyplot as plt
+
 ##############################################################""
 # Diverses fonctions générales
 
 def rad_in_km(angle_rad): # convertit un angle en radians en kms
 		return angle_rad*Zone.R_EARTH
+
+def trie_xy(xy_tuple): # met les deux tableaux dans l'ordre des x croissants
+	x_val = xy_tuple[0]
+	y_val = xy_tuple[1]
+	assert len(x_val) == len(y_val) # s'assure que les deux tableaux sont de même longueur
+	coord = [(x_val[i],y_val[i]) for i in range(0,len(x_val))] # crée un tableau de tuples coordonnées
+	coord.sort() # trie (écrase) le tableau selon les valeurs de x
+	new_x = [c[0] for c in coord] # reconstitue une liste triée des x
+	assert all(new_x[i] <= new_x[i+1] for i in range(len(new_x)-1)) # vérifie que new_x est bien dans l'ordre croissant
+	new_y = [c[1] for c in coord] # reconstitue une liste des y triée selon les x
+	return (new_x, new_y) # retourne un tuple qui contient les deux nouveaux tableaux
+  # on serait pas obligés de passer par un tuple pour renvoyer les infos... à vérifier
 
 ##############################################################""
 # Les Classes
@@ -50,7 +64,7 @@ class Zone:
 		self.inhabitants = [] # crée le tableau qui contiendra les habitants
 
 	@property
-	def area(self): # calcule l'aire en km d'une zone à partir des longitudes et latitudes en radian
+	def area(self): # calcule l'aire en km d'une zone à partir des longitudes et latitudes en radians
 		return abs(rad_in_km(self.coin1.long_rad-self.coin2.long_rad) *\
 			rad_in_km(self.coin1.long_rad-self.coin2.long_rad))
 
@@ -67,10 +81,24 @@ class Zone:
 		if self.popul == 0:
 			return 0
 		else:
-			return sum([agent.agreeableness for agent in self.inhabitants]) #List Comprehension
+			return sum([agent.agreeableness for agent in self.inhabitants])/self.popul #List Comprehension
 			# [ <1> <2> ] : crée un tableau en exécutant l'opération <1> dans la boucle <2>.
 			# somme tous les éléments du tableau, et divise par le nbe d'habitants
 	
+	@property
+	def mean_age(self): # calcule et retourne l'âge moyen dans une zone
+		if self.popul == 0:
+			return 0
+		else:
+			return sum([agent.age for agent in self.inhabitants])/self.popul #List Comprehension
+
+	@property
+	def mean_inc(self): # calcule et retourne l'âge moyen dans une zone
+		if self.popul == 0:
+			return 0
+		else:
+			return sum([agent.income for agent in self.inhabitants])/self.popul #List Comprehension
+
 	@classmethod
 	def _init_zones(cls): # initialise la liste de toutes les zones 
 		for lati in range(cls.MIN_LAT_DEG, cls.MAX_LAT_DEG, cls.HEIGHT_DEG):
@@ -102,6 +130,56 @@ class Zone:
 		posit.latitude >= min(self.coin1.latitude, self.coin2.latitude) and \
 		posit.latitude <= max(self.coin1.latitude, self.coin2.latitude)
 
+# Classes Graphes
+class BaseGraph:
+	
+	def __init__(self): # sert seulement à réunir les choses qui seront requises pour l'affichage
+		self.title = ("TITRE")
+		self.x_lab = ("AXE X")
+		self.y_lab = ("AXE Y")
+		self.sh_grid = True
+	
+	def xy_val(self, zones): # fonction qui est là juste pour spécifier que les classes filles devraient toutes comporter cette fonction
+		raise NotImplementedError 
+
+	def show(self, zones):
+		sorted_xy = trie_xy(self.xy_val(zones))
+		plt.plot(sorted_xy[0], sorted_xy[1], '-')
+		#plt.plot(self.xy_val(zones)[0], self.xy_val(zones)[1], '.') # données non triées
+		plt.xlabel(self.x_lab)
+		plt.ylabel(self.y_lab)
+		plt.title(self.title)
+		plt.grid(self.sh_grid)
+		plt.show()
+
+class AgreeaGraph(BaseGraph):
+	
+	def __init__(self):
+		super().__init__() # exécute quand même l'initialisation de la classe mère (attributs non overridés)
+		self.title = "-- EST-ON PLUS GENTILS A LA CAMPAGNE ? --"
+		self.x_lab = "Densité de population (hab/km carré)"
+		self.y_lab = "Agréabilité moyenne des habitants (-2 à +2)"
+		# seul self.sh_grid reste à la valeur par défaut True
+	
+	def xy_val(self, zones): # agréabilité moyenne en fonction de la densité de population
+		x_val = [z.pop_dens for z in zones] # toutes les densités de population (liste dans l'ordre des zones)
+		y_val = [z.mean_agr for z in zones] # agréabilité moyenne
+		return (x_val, y_val)
+
+class IncGraph(BaseGraph):
+	
+	def __init__(self):
+		super().__init__() # exécute quand même l'initialisation de la classe mère (attributs non overridés)
+		self.title = "-- EST-ON PLUS RICHE EN VIEILLISSANT ? --"
+		self.x_lab = "Age moyen sur les zones"
+		self.y_lab = "Revenu moyen sur les zones"
+		# seul self.sh_grid reste à la valeur par défaut True
+
+	def xy_val(self, zones): # revenu moyen en fonction de l'âge
+		x_val = [z.mean_age for z in zones] # toutes les densités de population (liste dans l'ordre des zones)
+		y_val = [z.mean_inc for z in zones] # agréabilité moyenne
+		return (x_val, y_val)
+
 ##############################################################""
 #Initialisation des variables
 listAgents = []
@@ -115,18 +193,11 @@ def main():
 		listAgents.append(agent) # ajoute l'agent crée à la liste
 		zone = Zone.zoneInhab(agent.position) # trouve la zone correspondant à la position de l'agent
 		zone.affectInhab(agent) # affecte l'agent dans sa zone
-	rep = int(input("numéro d'agent ? "))
-	print("l'agent n°" + str(rep) + " est situé à la position (" + str(listAgents[rep].position.longitude) \
-		+ "," + str(listAgents[rep].position.latitude) + ").")
-	repZone = Zone.zoneInhab(listAgents[rep].position)
-	lat_c1 = repZone.coin1.latitude
-	lat_c2 = repZone.coin2.latitude
-	long_c1 = repZone.coin1.longitude
-	long_c2 = repZone.coin2.longitude
-	print("Il est contenu dans la zone délimitée par (" + str(long_c1) + "," + str(lat_c1) + ") et (" \
-		+ str(long_c2) + "," + str(lat_c2) + ").")
-	print("La même zone contient " + str(repZone.popul) + " habitants, a une superficie de " \
-		+ str(repZone.area) + "et a une agréabilité moyenne de " + str(repZone.mean_agr) + ".")
+	mon_graphe_1 = AgreeaGraph()
+	mon_graphe_1.show(Zone.ZONES)
+	mon_graphe_2 = IncGraph()
+	mon_graphe_2.show(Zone.ZONES)
+
 main()
 
 	
